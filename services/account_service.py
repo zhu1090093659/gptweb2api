@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
@@ -156,7 +157,7 @@ class AccountService:
         self.storage = storage_backend
         self._lock = Lock()
         self._image_slot_condition = Condition(self._lock)
-        self._index = 0
+        self._index = int.from_bytes(os.urandom(4), "big")
         self._now = now or (lambda: datetime.now(timezone.utc).timestamp())
         self._accounts = self._load_accounts()
         self._image_inflight: dict[str, int] = {}
