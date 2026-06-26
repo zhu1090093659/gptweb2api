@@ -384,6 +384,7 @@ class AccountService:
         provider_strategy = account_strategy(normalized["provider"])
         if normalized["provider"] in {GROK_PROVIDER, GEMINI_PROVIDER}:
             normalized = provider_strategy.normalize_account(normalized)
+        normalized["proxy"] = str(normalized.get("proxy") or "").strip()
         normalized["success"] = int(normalized.get("success") or 0)
         normalized["fail"] = int(normalized.get("fail") or 0)
         normalized["last_used_at"] = normalized.get("last_used_at")

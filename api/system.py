@@ -14,6 +14,7 @@ from services.image_service import delete_images, download_images_zip, get_image
 from services.image_storage_service import ImageStorageError, image_storage_service
 from services.image_tags_service import delete_tag, get_all_tags, set_tags
 from services.log_service import log_service
+from services.proxy_pool_service import proxy_pool_service
 from services.proxy_service import test_proxy
 
 
@@ -42,6 +43,12 @@ class LogDeleteRequest(BaseModel):
     ids: list[str] = []
 class BackupDeleteRequest(BaseModel):
     key: str = ""
+
+class ProxyPoolImportRequest(BaseModel):
+    proxies: str = ""
+
+class ProxyPoolDeleteRequest(BaseModel):
+    ids: list[str] = []
 
 
 def create_router(app_version: str) -> APIRouter:
@@ -232,5 +239,38 @@ def create_router(app_version: str) -> APIRouter:
         require_admin(authorization)
         count = delete_tag(tag)
         return {"ok": True, "removed_from": count}
+
+    @router.get("/api/proxy-pool")
+    async def list_proxy_pool(authorization: str | None = Header(default=None)):
+        require_admin(authorization)
+        return {"items": proxy_pool_service.list_items()}
+
+    @router.post("/api/proxy-pool")
+    async def import_proxy_pool(body: ProxyPoolImportRequest, authorization: str | None = Header(default=None)):
+        require_admin(authorization)
+        text = (body.proxies or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail={"error": "proxies is required"})
+        result = proxy_pool_service.import_proxies(text)
+        return {**result, "items": proxy_pool_service.list_items()}
+
+    @router.delete("/api/proxy-pool")
+    async def delete_proxy_pool(body: ProxyPoolDeleteRequest, authorization: str | None = Header(default=None)):
+        require_admin(authorization)
+        if not body.ids:
+            result = proxy_pool_service.clear_all()
+        else:
+            result = proxy_pool_service.delete_proxies(body.ids)
+        return {**result, "items": proxy_pool_service.list_items()}
+
+    @router.post("/api/proxy-pool/assign")
+    async def assign_proxy_pool(authorization: str | None = Header(default=None)):
+        require_admin(authorization)
+        return await run_in_threadpool(proxy_pool_service.assign_to_accounts)
+
+    @router.post("/api/proxy-pool/clear")
+    async def clear_proxy_pool_assignments(authorization: str | None = Header(default=None)):
+        require_admin(authorization)
+        return await run_in_threadpool(proxy_pool_service.clear_assignments)
 
     return router

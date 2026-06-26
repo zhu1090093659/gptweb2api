@@ -38,6 +38,16 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
+    def load_proxy_pool(self) -> list[dict[str, Any]]:
+        """加载代理池数据"""
+        pass
+
+    @abstractmethod
+    def save_proxy_pool(self, items: list[dict[str, Any]]) -> None:
+        """保存代理池数据"""
+        pass
+
+    @abstractmethod
     def health_check(self) -> dict[str, Any]:
         """健康检查，返回存储后端状态"""
         pass

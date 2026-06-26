@@ -902,3 +902,59 @@ export async function testProxy(url?: string) {
     body: { url: url ?? "" },
   });
 }
+
+// ── Proxy Pool ───────────────────────────────────────────────────
+
+export type ProxyPoolItem = {
+  id: string;
+  url: string;
+  host: string;
+  port: number;
+  username: string;
+  created_at: string;
+};
+
+export type ProxyPoolResult = {
+  items: ProxyPoolItem[];
+  added?: number;
+  skipped?: number;
+  removed?: number;
+  total?: number;
+};
+
+export type ProxyPoolAssignResult = {
+  assigned: number;
+  total_proxies?: number;
+  total_accounts?: number;
+  error?: string;
+};
+
+export async function fetchProxyPool() {
+  return httpRequest<{ items: ProxyPoolItem[] }>("/api/proxy-pool");
+}
+
+export async function importProxyPool(proxies: string) {
+  return httpRequest<ProxyPoolResult>("/api/proxy-pool", {
+    method: "POST",
+    body: { proxies },
+  });
+}
+
+export async function deleteProxyPool(ids: string[]) {
+  return httpRequest<ProxyPoolResult>("/api/proxy-pool", {
+    method: "DELETE",
+    body: { ids },
+  });
+}
+
+export async function assignProxyPool() {
+  return httpRequest<ProxyPoolAssignResult>("/api/proxy-pool/assign", {
+    method: "POST",
+  });
+}
+
+export async function clearProxyPoolAssignments() {
+  return httpRequest<{ cleared: number }>("/api/proxy-pool/clear", {
+    method: "POST",
+  });
+}

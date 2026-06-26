@@ -39,7 +39,8 @@ def handle(body: dict[str, Any]) -> dict[str, Any]:
     token = account_service.get_text_access_token(provider="gpt")
     if not token:
         raise HTTPException(status_code=429, detail={"error": "no available text account"})
-    backend = OpenAIBackendAPI(token)
+    account = account_service.get_account(token) or {}
+    backend = OpenAIBackendAPI(token, account_proxy=str(account.get("proxy") or ""))
     try:
         result = backend.search(prompt, model=model)
     finally:
