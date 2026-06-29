@@ -66,6 +66,13 @@ def handle(body: dict[str, Any]) -> dict[str, Any]:
                 _MAX_RETRIES,
                 exc,
             )
+            # Transition the account's state (限流/异常/禁用) so degraded accounts
+            # exit rotation and get auto-recovered by the limited-account-watcher
+            # instead of being retried on every request.
+            try:
+                account_service.mark_search_failure(token, exc)
+            except Exception as mark_exc:
+                logger.warning("failed to mark search failure for account: %s", mark_exc)
             last_error = exc
             continue
         finally:
