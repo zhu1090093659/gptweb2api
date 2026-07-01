@@ -912,6 +912,15 @@ export type ProxyPoolItem = {
   port: number;
   username: string;
   created_at: string;
+  source?: "manual" | "subscription";
+  subscription_id?: string;
+  node_id?: string;
+  region?: string;
+  protocol?: string;
+  local_port?: number;
+  health?: "ok" | "down" | "unknown";
+  last_check_at?: string;
+  latency_ms?: number;
 };
 
 export type ProxyPoolResult = {
@@ -957,4 +966,58 @@ export async function clearProxyPoolAssignments() {
   return httpRequest<{ cleared: number }>("/api/proxy-pool/clear", {
     method: "POST",
   });
+}
+
+// ── Subscription Sources & Sync ───────────────────────────────
+
+export type SubscriptionSource = {
+  id: string;
+  name: string;
+  url: string;
+  region_keywords: string;
+  enabled: boolean;
+  last_sync_at: string;
+  last_total: number;
+  last_usable: number;
+  last_error: string;
+};
+
+export type SyncTaskStatus = {
+  status: "pending" | "running" | "done" | "error" | "skipped" | "unknown";
+  progress: number;
+  result?: { total: number; usable: number; reassigned: number; errors?: string[]; error?: string };
+  error?: string | null;
+  started_at: string;
+};
+
+export async function fetchSubscriptions() {
+  return httpRequest<{ items: SubscriptionSource[] }>("/api/proxy-pool/subscriptions");
+}
+
+export async function addSubscription(name: string, url: string, region_keywords: string) {
+  return httpRequest<{ item: SubscriptionSource; items: SubscriptionSource[] }>("/api/proxy-pool/subscriptions", {
+    method: "POST",
+    body: { name, url, region_keywords },
+  });
+}
+
+export async function deleteSubscription(id: string) {
+  return httpRequest<{ removed: number; items: SubscriptionSource[] }>(`/api/proxy-pool/subscriptions/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function syncProxyPool(subscription_id?: string) {
+  return httpRequest<{ task_id: string }>("/api/proxy-pool/sync", {
+    method: "POST",
+    body: { subscription_id: subscription_id ?? null },
+  });
+}
+
+export async function getSyncStatus(task_id: string) {
+  return httpRequest<SyncTaskStatus>(`/api/proxy-pool/sync/${task_id}`);
+}
+
+export async function fetchProxyPoolHealth() {
+  return httpRequest<{ items: ProxyPoolItem[] }>("/api/proxy-pool/health");
 }
