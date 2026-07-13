@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 from threading import Event, Thread
 
@@ -111,21 +112,38 @@ def start_limited_account_watcher(stop_event: Event) -> Thread:
     return thread
 
 
-def resolve_web_asset(requested_path: str) -> Path | None:
-    if not WEB_DIST_DIR.exists():
+@lru_cache(maxsize=1)
+def web_dist_base_dir() -> Path | None:
+    if not WEB_DIST_DIR.is_dir():
         return None
+    return WEB_DIST_DIR.resolve()
+
+
+@lru_cache(maxsize=1)
+def web_index_asset() -> Path | None:
+    base_dir = web_dist_base_dir()
+    if base_dir is None:
+        return None
+    index = base_dir / "index.html"
+    return index if index.is_file() else None
+
+
+def resolve_web_asset(requested_path: str) -> Path | None:
     clean_path = requested_path.strip("/")
-    base_dir = WEB_DIST_DIR.resolve()
-    candidates = [base_dir / "index.html"] if not clean_path else [
-        base_dir / Path(clean_path),
-        base_dir / clean_path / "index.html",
+    if clean_path in {"", "index.html"}:
+        return web_index_asset()
+    requested = Path(clean_path)
+    if requested.is_absolute() or ".." in requested.parts:
+        return None
+    base_dir = web_dist_base_dir()
+    if base_dir is None:
+        return None
+    candidates = [
+        base_dir / requested,
+        base_dir / requested / "index.html",
         base_dir / f"{clean_path}.html",
     ]
     for candidate in candidates:
-        try:
-            candidate.resolve().relative_to(base_dir)
-        except ValueError:
-            continue
         if candidate.is_file():
             return candidate
     return None

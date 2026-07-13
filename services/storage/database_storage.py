@@ -111,6 +111,38 @@ class DatabaseStorageBackend(StorageBackend):
         finally:
             session.close()
 
+    def load_subscriptions(self) -> list[dict[str, Any]]:
+        """从数据库加载订阅源数据"""
+        session = self.Session()
+        try:
+            row = session.query(AppSettingModel).filter_by(key="subscriptions").one_or_none()
+            if row is None:
+                return []
+            try:
+                data = json.loads(row.data)
+            except json.JSONDecodeError:
+                return []
+            return data if isinstance(data, list) else []
+        finally:
+            session.close()
+
+    def save_subscriptions(self, items: list[dict[str, Any]]) -> None:
+        """保存订阅源数据到数据库"""
+        session = self.Session()
+        try:
+            row = session.query(AppSettingModel).filter_by(key="subscriptions").one_or_none()
+            data = json.dumps(items, ensure_ascii=False)
+            if row is None:
+                session.add(AppSettingModel(key="subscriptions", data=data))
+            else:
+                row.data = data
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
     def load_settings(self) -> dict[str, Any]:
         """从数据库加载全局设置"""
         session = self.Session()

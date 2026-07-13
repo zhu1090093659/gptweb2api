@@ -9,9 +9,23 @@ from fastapi.responses import FileResponse
 
 from api import accounts, ai, gemini, image_tasks, system
 from api.errors import install_exception_handlers
-from api.support import resolve_web_asset, start_limited_account_watcher
+from api.support import resolve_web_asset, start_limited_account_watcher, web_index_asset
 from services.backup_service import backup_service
 from services.config import config
+from services.mihomo_manager import mihomo_manager
+from services.proxy_health_service import proxy_health_service
+
+
+def serve_web_asset(full_path: str):
+    asset = resolve_web_asset(full_path)
+    if asset is not None:
+        return FileResponse(asset)
+    if full_path.strip("/").startswith("_next/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+    fallback = web_index_asset()
+    if fallback is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(fallback)
 
 
 def create_app() -> FastAPI:
@@ -23,12 +37,20 @@ def create_app() -> FastAPI:
         thread = start_limited_account_watcher(stop_event)
         backup_service.start()
         config.cleanup_old_images()
+        # mihomo 常驻代理内核（启动失败不拖垮主服务，订阅代理功能降级）
+        try:
+            mihomo_manager.start()
+        except Exception as e:  # noqa: BLE001
+            print(f"[lifespan] mihomo 启动失败，订阅代理功能降级: {e}", flush=True)
+        proxy_health_service.start()
         try:
             yield
         finally:
             stop_event.set()
             thread.join(timeout=1)
             backup_service.stop()
+            proxy_health_service.stop()
+            mihomo_manager.stop()
 
     app = FastAPI(title="webchat2api", version=app_version, lifespan=lifespan)
     install_exception_handlers(app)
@@ -51,14 +73,6 @@ def create_app() -> FastAPI:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_web(full_path: str):
-        asset = resolve_web_asset(full_path)
-        if asset is not None:
-            return FileResponse(asset)
-        if full_path.strip("/").startswith("_next/"):
-            raise HTTPException(status_code=404, detail="Not Found")
-        fallback = resolve_web_asset("")
-        if fallback is None:
-            raise HTTPException(status_code=404, detail="Not Found")
-        return FileResponse(fallback)
+        return serve_web_asset(full_path)
 
     return app

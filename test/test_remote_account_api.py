@@ -57,6 +57,12 @@ class MemoryStorage(StorageBackend):
     def save_proxy_pool(self, items: list[dict[str, Any]]) -> None:
         pass
 
+    def load_subscriptions(self) -> list[dict[str, Any]]:
+        return []
+
+    def save_subscriptions(self, items: list[dict[str, Any]]) -> None:
+        pass
+
     def health_check(self) -> dict[str, Any]:
         return {"ok": True}
 

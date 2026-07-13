@@ -33,7 +33,7 @@ jobs:
       issues: write
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      OPENAI_MODEL: gpt-5.3-codex
+      OPENAI_MODEL: opencode-dev-1M
       OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || secrets.OPENAI_BASE_URL || 'https://api.openai.com' }}
       PR_NUMBER: ${{ github.event.inputs.pr_number }}
       REVIEW_INSTRUCTION: ${{ github.event.inputs.instruction }}
